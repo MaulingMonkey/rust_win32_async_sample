@@ -47,6 +47,7 @@ fn main_loop() {
         }
 
         UI_POOL.with(|pool| pool.borrow_mut().run_until_stalled());
+        std::thread::yield_now(); // don't 100% our CPU maybe
     }
 }
 
