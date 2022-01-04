@@ -10,6 +10,8 @@ license         = "Apache-2.0 OR MIT"
 
 [dependencies]
 futures.version = "0.3"
+lazy_static     = "1"
+waker-fn        = "1"
 wchar           = "0.11"
 winapi.version  = "0.3"
 
@@ -24,6 +26,7 @@ winapi.features = [
 
     # um
     "libloaderapi",
+    "processthreadsapi",
     "wingdi",
     "winuser",
 ]

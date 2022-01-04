@@ -2,8 +2,7 @@
 #![allow(non_snake_case)]           // WinAPI style vars
 #![deny(unreachable_patterns)]      // probably a bad WM_* match
 
-use futures::executor::{LocalPool, LocalSpawner};
-use futures::task::LocalSpawnExt;
+mod uiexec;
 
 use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
@@ -19,8 +18,8 @@ use std::ptr::{null, null_mut};
 use std::time::Duration;
 
 thread_local! {
-    static UI_POOL : RefCell<LocalPool> = Default::default();
-    static UI_SPAWNER : LocalSpawner = UI_POOL.with(|pool| pool.borrow().spawner());
+    static UI_POOL : RefCell<uiexec::Pool> = Default::default();
+    static UI_SPAWNER : uiexec::Spawner = UI_POOL.with(|pool| pool.borrow().spawner());
 }
 
 fn main() {
@@ -35,18 +34,21 @@ async fn on_mouse_down() {
 }
 
 fn main_loop() {
+    UI_SPAWNER.with(|_| {}); // ensure initialized
     loop {
-        let mut msg : MSG = unsafe { zeroed() };
-        while unsafe { PeekMessageW(&mut msg, null_mut(), 0, 0, PM_REMOVE) } != 0 {
+        UI_POOL.with(|pool|{
+            let mut msg : MSG = unsafe { zeroed() };
+            let mut pool = pool.borrow_mut();
+            assert_ne!(unsafe { GetMessageW(&mut msg, null_mut(), 0, 0) }, -1);
             unsafe { TranslateMessage(&msg) };
             unsafe { DispatchMessageW(&msg) };
             match msg.message {
                 WM_QUIT => return,
                 _       => {},
             }
-        }
 
-        UI_POOL.with(|pool| pool.borrow_mut().run_until_stalled());
+            pool.run_until_stalled();
+        });
         std::thread::yield_now(); // don't 100% our CPU maybe
     }
 }
@@ -59,7 +61,7 @@ unsafe extern "system" fn window_proc(hwnd: HWND, uMsg: UINT, wParam: WPARAM, lP
                 0
             },
             WM_LBUTTONDOWN => {
-                UI_SPAWNER.with(|s| s.spawn_local(on_mouse_down())).unwrap();
+                UI_SPAWNER.with(|s| s.spawn(on_mouse_down())).unwrap();
                 0
             },
             WM_PAINT => unsafe {
