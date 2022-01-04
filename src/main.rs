@@ -49,29 +49,34 @@ fn main_loop() {
     }
 }
 
-extern "system" fn window_proc(hwnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM) -> LRESULT {
-    match uMsg {
-        WM_DESTROY => unsafe {
-            PostQuitMessage(0);
-            0
-        },
-        WM_LBUTTONDOWN => {
-            UI_SPAWNER.with(|s| s.spawn_local(on_mouse_down())).unwrap();
-            0
-        },
-        WM_PAINT => unsafe {
-            let mut ps : PAINTSTRUCT = zeroed();
-            let hdc = BeginPaint(hwnd, &mut ps);
-            let brush = CreateSolidBrush(RGB(0x33, 0x66, 0x99));
-            FillRect(hdc, &ps.rcPaint, brush);
-            EndPaint(hwnd, &ps);
-            DeleteObject(brush as HGDIOBJ);
-            0
-        },
-        _ => unsafe {
-            DefWindowProcW(hwnd, uMsg, wParam, lParam)
-        },
-    }
+unsafe extern "system" fn window_proc(hwnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM) -> LRESULT {
+    std::panic::catch_unwind(||{ // unwinding panics across FFI callback boundaries would be undefined behavior
+        match uMsg {
+            WM_DESTROY => unsafe {
+                PostQuitMessage(0);
+                0
+            },
+            WM_LBUTTONDOWN => {
+                UI_SPAWNER.with(|s| s.spawn_local(on_mouse_down())).unwrap();
+                0
+            },
+            WM_PAINT => unsafe {
+                let mut ps : PAINTSTRUCT = zeroed();
+                let hdc = BeginPaint(hwnd, &mut ps);
+                let brush = CreateSolidBrush(RGB(0x33, 0x66, 0x99));
+                FillRect(hdc, &ps.rcPaint, brush);
+                EndPaint(hwnd, &ps);
+                DeleteObject(brush as HGDIOBJ);
+                0
+            },
+            _ => unsafe {
+                DefWindowProcW(hwnd, uMsg, wParam, lParam)
+            },
+        }
+    }).unwrap_or_else(|panic|{
+        eprintln!("window_proc paniced: {:?}", panic);
+        std::process::abort();
+    })
 }
 
 fn spawn_window() {
