@@ -24,6 +24,7 @@ thread_local! {
 }
 
 fn main() {
+    register_window_class();
     spawn_window();
     main_loop();
 }
@@ -79,7 +80,7 @@ unsafe extern "system" fn window_proc(hwnd: HWND, uMsg: UINT, wParam: WPARAM, lP
     })
 }
 
-fn spawn_window() {
+fn register_window_class() {
     let hInstance = unsafe { GetModuleHandleW(null()) };
     assert!(!hInstance.is_null());
 
@@ -88,6 +89,11 @@ fn spawn_window() {
 
     let wc = WNDCLASSW { lpfnWndProc: Some(window_proc), hInstance, hCursor, lpszClassName: wchz!("SampleWndClass").as_ptr(), .. unsafe { zeroed() } };
     assert!(unsafe { RegisterClassW(&wc) } != 0);
+}
+
+fn spawn_window() {
+    let hInstance = unsafe { GetModuleHandleW(null()) };
+    assert!(!hInstance.is_null());
 
     let hwnd = unsafe { CreateWindowExW(
         0, wchz!("SampleWndClass").as_ptr(), wchz!("Title").as_ptr(), WS_OVERLAPPEDWINDOW,  // exstyle, class, title, style
