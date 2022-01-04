@@ -1,0 +1,29 @@
+# https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package]
+name            = "rust_win32_async_sample"
+version         = "0.0.0-git"
+authors         = ["MaulingMonkey <git@maulingmonkey.com>"]
+publish         = false
+edition         = "2021"
+license         = "Apache-2.0 OR MIT"
+
+[dependencies]
+futures.version = "0.3"
+wchar           = "0.11"
+winapi.version  = "0.3"
+
+futures.features = [
+    "executor",
+]
+
+winapi.features = [
+    # shared
+    "minwindef",
+    "windef",
+
+    # um
+    "libloaderapi",
+    "wingdi",
+    "winuser",
+]
